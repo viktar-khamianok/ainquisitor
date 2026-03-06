@@ -9,7 +9,7 @@
     "dev": "ts-node src/bot.ts",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:integration": "vitest run test/integration/inquisitorMaximus.integration.test.ts --reporter=verbose"
+    "test:integration": "vitest run test/integration/inquisitorMaximus.integration.test.ts --reporter=verbose --testTimeout=600000"
   },
   "keywords": [],
   "author": "",
