@@ -30,6 +30,12 @@ npm start
 npm run dev
 ```
 
+Интеграционный прогон переписки:
+
+```bash
+npm run test:integration
+```
+
 ## Логирование
 
 Поддерживаются уровни `debug`, `info`, `warn`, `error` через переменную `LOG_LEVEL`.

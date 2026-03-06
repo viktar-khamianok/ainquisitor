@@ -2,6 +2,7 @@ import "dotenv/config";
 import OpenAI from "openai";
 import { Telegraf } from "telegraf";
 import { config } from "./config";
+import { BotMessageProcessor } from "./core/botMessageProcessor";
 import { ChatMemory } from "./services/chatMemory";
 import { Logger } from "./services/logger";
 import { OpenAiService } from "./services/openaiService";
@@ -12,6 +13,7 @@ import type { ChatMemorySnapshot, StorageShape } from "./types";
 
 const logger = new Logger(config.logLevel);
 const bot = new Telegraf(config.telegramBotToken);
+
 const jsonStorage = new JsonStorageService<StorageShape>(
   config.storagePath,
   () => ({ chats: {} }),
@@ -19,20 +21,18 @@ const jsonStorage = new JsonStorageService<StorageShape>(
   logger
 );
 const storage = new SinStorageService(jsonStorage, logger);
+
 const contextStorage = new JsonStorageService<ChatMemorySnapshot>(
   config.contextStoragePath,
   () => ({ chats: {} }),
   "context memory",
   logger
 );
-const memory = new ChatMemory(
-  config.inMemoryHistoryLimit,
-  config.contextMessages,
-  contextStorage,
-  logger
-);
+const memory = new ChatMemory(config.inMemoryHistoryLimit, config.contextMessages, contextStorage, logger);
+
 const llmService = new OpenAiService(new OpenAI({ apiKey: config.openaiApiKey }), config.openaiModel, logger);
 const sinService = new SinService(llmService, logger);
+const processor = new BotMessageProcessor(memory, sinService, storage, config.maxSins, logger);
 
 bot.on("text", async (ctx) => {
   const chatId = String(ctx.chat.id);
@@ -44,48 +44,23 @@ bot.on("text", async (ctx) => {
   const text = ctx.message.text.trim();
   const now = new Date().toISOString();
 
-  memory.pushMessage(chatId, {
-    userId,
-    username,
-    text,
-    date_time: now,
-  });
-
-  const context = memory.getContextFromOtherUsers(chatId, userId);
-
   try {
-    const result = await sinService.detectSin(context, text);
-    if (!result.is_sin) {
-      logger.debug("No sin detected", { chatId, userId });
-      return;
-    }
-
-    const sinName = result.sin_name.trim() || "Неопределенный грех";
-    const manifestation = result.manifestation.trim() || text;
-    const currentCount = storage.addSin(chatId, userId, {
-      date_time: now,
-      sin: sinName,
-      manifestation,
+    const replies = await processor.process({
+      chatId,
+      userId,
+      username,
+      text,
+      dateTime: now,
+      messageId: ctx.message.message_id,
     });
 
-    logger.info("Sin detected", { chatId, userId, sinName, currentCount });
-
-    await ctx.reply(`${sinName} ${Math.min(currentCount, config.maxSins)}/${config.maxSins}`, {
-      reply_parameters: { message_id: ctx.message.message_id },
-    });
-
-    if (currentCount >= config.maxSins) {
-      const recentSins = storage.getRecentSins(chatId, userId, config.maxSins);
-      const punishment = await sinService.generatePunishment(sinName, manifestation, recentSins);
-      await ctx.reply(`Епитимья: ${punishment}`);
-
-      storage.addPunishment(chatId, userId, {
-        date_time: new Date().toISOString(),
-        reason: `Достигнут лимит ${config.maxSins} грехов`,
-        punishment,
-      });
-
-      logger.warn("Punishment assigned", { chatId, userId, punishment });
+    for (const reply of replies) {
+      await ctx.reply(
+        reply.text,
+        reply.replyToMessageId
+          ? { reply_parameters: { message_id: reply.replyToMessageId } }
+          : undefined
+      );
     }
   } catch (error) {
     logger.error("Failed to analyze message", error);
