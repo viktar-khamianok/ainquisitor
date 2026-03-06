@@ -1,5 +1,6 @@
 import type { ChatMessage, SinDetection, SinEntry } from "../types";
 import type { LlmService } from "./llmService";
+import type { Logger } from "./logger";
 
 const SIN_DETECTION_SCHEMA = {
   type: "object" as const,
@@ -13,9 +14,17 @@ const SIN_DETECTION_SCHEMA = {
 };
 
 export class SinService {
-  constructor(private readonly llmService: LlmService) {}
+  constructor(
+    private readonly llmService: LlmService,
+    private readonly logger?: Logger
+  ) {}
 
   async detectSin(context: ChatMessage[], currentText: string): Promise<SinDetection> {
+    this.logger?.debug("Detecting sin from message", {
+      contextSize: context.length,
+      messageLength: currentText.length,
+    });
+
     const contextText = context
       .map(
         (m, index) =>
@@ -45,6 +54,11 @@ ${currentText}
     manifestation: string,
     recentSins: SinEntry[]
   ): Promise<string> {
+    this.logger?.debug("Generating punishment", {
+      sinName,
+      recentSinsCount: recentSins.length,
+    });
+
     const sinsText = recentSins.map((s, idx) => `${idx + 1}. ${s.sin}: ${s.manifestation}`).join("\n");
 
     const prompt = `

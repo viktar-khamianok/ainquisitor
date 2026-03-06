@@ -3,15 +3,17 @@ import OpenAI from "openai";
 import { Telegraf } from "telegraf";
 import { config } from "./config";
 import { ChatMemory } from "./services/chatMemory";
+import { Logger } from "./services/logger";
 import { OpenAiService } from "./services/openaiService";
 import { SinService } from "./services/sinService";
 import { JsonStorage } from "./storage/jsonStorage";
 
+const logger = new Logger(config.logLevel);
 const bot = new Telegraf(config.telegramBotToken);
-const storage = new JsonStorage(config.storagePath);
+const storage = new JsonStorage(config.storagePath, logger);
 const memory = new ChatMemory(config.inMemoryHistoryLimit, config.contextMessages);
-const llmService = new OpenAiService(new OpenAI({ apiKey: config.openaiApiKey }), config.openaiModel);
-const sinService = new SinService(llmService);
+const llmService = new OpenAiService(new OpenAI({ apiKey: config.openaiApiKey }), config.openaiModel, logger);
+const sinService = new SinService(llmService, logger);
 
 bot.on("text", async (ctx) => {
   const chatId = String(ctx.chat.id);
@@ -35,6 +37,7 @@ bot.on("text", async (ctx) => {
   try {
     const result = await sinService.detectSin(context, text);
     if (!result.is_sin) {
+      logger.debug("No sin detected", { chatId, userId });
       return;
     }
 
@@ -45,6 +48,8 @@ bot.on("text", async (ctx) => {
       sin: sinName,
       manifestation,
     });
+
+    logger.info("Sin detected", { chatId, userId, sinName, currentCount });
 
     await ctx.reply(`${sinName} ${Math.min(currentCount, config.maxSins)}/${config.maxSins}`, {
       reply_parameters: { message_id: ctx.message.message_id },
@@ -60,24 +65,26 @@ bot.on("text", async (ctx) => {
         reason: `Достигнут лимит ${config.maxSins} грехов`,
         punishment,
       });
+
+      logger.warn("Punishment assigned", { chatId, userId, punishment });
     }
   } catch (error) {
-    console.error("Failed to analyze message:", error);
+    logger.error("Failed to analyze message", error);
   }
 });
 
 bot.catch((err) => {
-  console.error("Telegram error:", err);
+  logger.error("Telegram error", err);
 });
 
 async function start() {
   await storage.load();
   await bot.launch();
-  console.log("Bot started");
+  logger.info("Bot started");
 }
 
 start().catch((err) => {
-  console.error("Startup error:", err);
+  logger.error("Startup error", err);
   process.exit(1);
 });
 

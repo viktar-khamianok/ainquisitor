@@ -30,14 +30,18 @@ npm start
 npm run dev
 ```
 
+## Логирование
+
+Поддерживаются уровни `debug`, `info`, `warn`, `error` через переменную `LOG_LEVEL`.
+
 ## Важно для Telegram
 
 - Бот должен быть добавлен в группу.
-- В `@BotFather` отключить privacy mode (`/setprivacy -> Disable`), иначе бот не увидит все сообщения.
+- В `@BotFather` нужно отключить privacy mode (`/setprivacy -> Disable`), иначе бот не увидит все сообщения.
 
 ## Формат JSON
 
-Данные лежат в `data/sins_storage.json` и сгруппированы по `chatId`, затем по `userId`:
+Данные в `data/sins_storage.json` сгруппированы по `chatId`, затем по `userId`:
 
 - `sins_count`: текущий счетчик (0-10)
 - `sins[]`: история грехов
