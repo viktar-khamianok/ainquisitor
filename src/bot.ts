@@ -6,11 +6,13 @@ import { ChatMemory } from "./services/chatMemory";
 import { Logger } from "./services/logger";
 import { OpenAiService } from "./services/openaiService";
 import { SinService } from "./services/sinService";
-import { JsonStorage } from "./storage/jsonStorage";
+import { JsonStorageService } from "./storage/jsonStorageService";
+import { SinStorageService } from "./storage/sinStorageService";
 
 const logger = new Logger(config.logLevel);
 const bot = new Telegraf(config.telegramBotToken);
-const storage = new JsonStorage(config.storagePath, logger);
+const jsonStorage = new JsonStorageService(config.storagePath, logger);
+const storage = new SinStorageService(jsonStorage, logger);
 const memory = new ChatMemory(config.inMemoryHistoryLimit, config.contextMessages);
 const llmService = new OpenAiService(new OpenAI({ apiKey: config.openaiApiKey }), config.openaiModel, logger);
 const sinService = new SinService(llmService, logger);
