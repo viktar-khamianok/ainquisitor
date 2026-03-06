@@ -8,12 +8,29 @@ import { OpenAiService } from "./services/openaiService";
 import { SinService } from "./services/sinService";
 import { JsonStorageService } from "./storage/jsonStorageService";
 import { SinStorageService } from "./storage/sinStorageService";
+import type { ChatMemorySnapshot, StorageShape } from "./types";
 
 const logger = new Logger(config.logLevel);
 const bot = new Telegraf(config.telegramBotToken);
-const jsonStorage = new JsonStorageService(config.storagePath, logger);
+const jsonStorage = new JsonStorageService<StorageShape>(
+  config.storagePath,
+  () => ({ chats: {} }),
+  "sin storage",
+  logger
+);
 const storage = new SinStorageService(jsonStorage, logger);
-const memory = new ChatMemory(config.inMemoryHistoryLimit, config.contextMessages);
+const contextStorage = new JsonStorageService<ChatMemorySnapshot>(
+  config.contextStoragePath,
+  () => ({ chats: {} }),
+  "context memory",
+  logger
+);
+const memory = new ChatMemory(
+  config.inMemoryHistoryLimit,
+  config.contextMessages,
+  contextStorage,
+  logger
+);
 const llmService = new OpenAiService(new OpenAI({ apiKey: config.openaiApiKey }), config.openaiModel, logger);
 const sinService = new SinService(llmService, logger);
 
@@ -81,6 +98,7 @@ bot.catch((err) => {
 
 async function start() {
   await storage.load();
+  await memory.load();
   await bot.launch();
   logger.info("Bot started");
 }

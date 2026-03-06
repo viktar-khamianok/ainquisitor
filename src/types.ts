@@ -31,6 +31,10 @@ export type ChatMessage = {
   date_time: string;
 };
 
+export type ChatMemorySnapshot = {
+  chats: Record<string, ChatMessage[]>;
+};
+
 export type SinDetection = {
   is_sin: boolean;
   sin_name: string;

@@ -25,6 +25,8 @@ export const config = {
   openaiApiKey,
   openaiModel: process.env.OPENAI_MODEL ?? "gpt-4.1-mini",
   storagePath: process.env.STORAGE_PATH ?? path.join(process.cwd(), "data", "sins_storage.json"),
+  contextStoragePath:
+    process.env.CONTEXT_STORAGE_PATH ?? path.join(process.cwd(), "data", "context_memory.json"),
   logLevel: parseLogLevel(process.env.LOG_LEVEL),
   maxSins: 10,
   contextMessages: 15,

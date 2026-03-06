@@ -3,6 +3,7 @@ import os from "node:os";
 import path from "node:path";
 import { afterEach, describe, expect, it } from "vitest";
 import { JsonStorageService } from "../src/storage/jsonStorageService";
+import type { StorageShape } from "../src/types";
 
 const tempDirs: string[] = [];
 
@@ -25,7 +26,11 @@ afterEach(async () => {
 describe("JsonStorageService", () => {
   it("creates empty storage file on first load", async () => {
     const storagePath = await createTempStoragePath();
-    const storage = new JsonStorageService(storagePath);
+    const storage = new JsonStorageService<StorageShape>(
+      storagePath,
+      () => ({ chats: {} }),
+      "test storage"
+    );
 
     await storage.load();
 
@@ -49,14 +54,22 @@ describe("JsonStorageService", () => {
       },
     };
 
-    const storage = new JsonStorageService(storagePath);
+    const storage = new JsonStorageService<StorageShape>(
+      storagePath,
+      () => ({ chats: {} }),
+      "test storage"
+    );
     await storage.load();
     storage.update((data) => {
       Object.assign(data, initial);
     });
     await flushWrites();
 
-    const reloaded = new JsonStorageService(storagePath);
+    const reloaded = new JsonStorageService<StorageShape>(
+      storagePath,
+      () => ({ chats: {} }),
+      "test storage"
+    );
     await reloaded.load();
 
     expect(reloaded.read()).toEqual(initial);
@@ -64,7 +77,11 @@ describe("JsonStorageService", () => {
 
   it("persists update mutations to file", async () => {
     const storagePath = await createTempStoragePath();
-    const storage = new JsonStorageService(storagePath);
+    const storage = new JsonStorageService<StorageShape>(
+      storagePath,
+      () => ({ chats: {} }),
+      "test storage"
+    );
     await storage.load();
 
     storage.update((data) => {
