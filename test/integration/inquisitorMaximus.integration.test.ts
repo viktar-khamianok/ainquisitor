@@ -1,8 +1,7 @@
 import { mkdtemp, readFile, rm } from "node:fs/promises";
 import os from "node:os";
 import path from "node:path";
-import OpenAI from "openai";
-import { afterAll, describe, it } from "vitest";
+import { afterAll, test } from "vitest";
 import { BotMessageProcessor } from "../../src/core/botMessageProcessor";
 import { ChatMemory } from "../../src/services/chatMemory";
 import { Logger } from "../../src/services/logger";
@@ -31,19 +30,21 @@ function parseLine(line: string) {
 
 let tempDir = "";
 
-describe("Inquisitor Maximus integration (real LLM)", () => {
-  afterAll(async () => {
-    if (tempDir) {
-      await sleep(100);
-      await rm(tempDir, { recursive: true, force: true });
-    }
-  });
+afterAll(async () => {
+  if (tempDir) {
+    await sleep(100);
+    await rm(tempDir, { recursive: true, force: true });
+  }
+});
 
-  it("replays group chat line by line and prints bot answers", async () => {
+test(
+  "Inquisitor Maximus integration (real LLM): replays group chat line by line and prints bot answers",
+  async () => {
     if (!OPENAI_API_KEY) {
       throw new Error("OPENAI_API_KEY is required for this integration test");
     }
 
+    const { default: OpenAI } = await import("openai");
     const logger = new Logger("info");
 
     tempDir = await mkdtemp(path.join(os.tmpdir(), "ainq-int-real-"));
@@ -102,5 +103,6 @@ describe("Inquisitor Maximus integration (real LLM)", () => {
     console.log(`=== ${BOT_NAME}: integration replay finished ===\n`);
 
     await sleep(100);
-  }, 10 * 60 * 1000);
-});
+  },
+  10 * 60 * 1000
+);
