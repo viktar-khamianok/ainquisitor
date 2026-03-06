@@ -4,12 +4,14 @@ import { Telegraf } from "telegraf";
 import { config } from "./config";
 import { ChatMemory } from "./services/chatMemory";
 import { OpenAiService } from "./services/openaiService";
+import { SinService } from "./services/sinService";
 import { JsonStorage } from "./storage/jsonStorage";
 
 const bot = new Telegraf(config.telegramBotToken);
 const storage = new JsonStorage(config.storagePath);
 const memory = new ChatMemory(config.inMemoryHistoryLimit, config.contextMessages);
-const aiService = new OpenAiService(new OpenAI({ apiKey: config.openaiApiKey }), config.openaiModel);
+const llmService = new OpenAiService(new OpenAI({ apiKey: config.openaiApiKey }), config.openaiModel);
+const sinService = new SinService(llmService);
 
 bot.on("text", async (ctx) => {
   const chatId = String(ctx.chat.id);
@@ -31,7 +33,7 @@ bot.on("text", async (ctx) => {
   const context = memory.getContextFromOtherUsers(chatId, userId);
 
   try {
-    const result = await aiService.detectSin(context, text);
+    const result = await sinService.detectSin(context, text);
     if (!result.is_sin) {
       return;
     }
@@ -50,7 +52,7 @@ bot.on("text", async (ctx) => {
 
     if (currentCount >= config.maxSins) {
       const recentSins = storage.getRecentSins(chatId, userId, config.maxSins);
-      const punishment = await aiService.generatePunishment(sinName, manifestation, recentSins);
+      const punishment = await sinService.generatePunishment(sinName, manifestation, recentSins);
       await ctx.reply(`Епитимья: ${punishment}`);
 
       storage.addPunishment(chatId, userId, {
